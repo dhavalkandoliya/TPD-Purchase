@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TPD Purchase Management</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body { background-color: #f3f4f6; font-family: 'Segoe UI', sans-serif; -webkit-tap-highlight-color: transparent; }
+        .tpd-header { background-color: #1e3a8a; } /* Dark Blue like your image */
+        .safe-area-inset { padding-bottom: calc(1rem + env(safe-area-inset-bottom)); }
+    </style>
+</head>
+<body>
+    <div id="app" class="max-w-md mx-auto min-h-screen relative">
+        
+        <div class="tpd-header text-white p-6 rounded-b-3xl shadow-lg text-center sticky top-0 z-50">
+            <div class="flex justify-center mb-2">
+                <i class="fas fa-clipboard-list text-4xl"></i>
+            </div>
+            <h1 class="text-2xl font-bold tracking-wide uppercase">Purchase Request</h1>
+            <p class="text-xs opacity-80">Trust Project Department — Material Tracking</p>
+        </div>
+
+        <div class="p-4 flex gap-2 overflow-x-auto bg-gray-50/80 backdrop-blur-sm sticky top-[138px] z-40 border-b">
+            <button @click="userRole = 'Engineer'" :class="userRole === 'Engineer' ? 'bg-blue-600 text-white' : 'bg-white'" class="px-4 py-1 rounded-full shadow text-xs border whitespace-nowrap">Engineer</button>
+            <button @click="userRole = 'Admin'" :class="userRole === 'Admin' ? 'bg-blue-600 text-white' : 'bg-white'" class="px-4 py-1 rounded-full shadow text-xs border whitespace-nowrap">Admin Dashboard</button>
+            <button @click="userRole = 'Supervisor'" :class="userRole === 'Supervisor' ? 'bg-blue-600 text-white' : 'bg-white'" class="px-4 py-1 rounded-full shadow text-xs border whitespace-nowrap">Supervisor Recv.</button>
+        </div>
+
+        <div class="pb-28"> 
+
+        <div v-if="userRole === 'Engineer'" class="p-4 space-y-4">
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+                <div class="mb-4">
+                    <label class="text-gray-500 text-xs font-bold uppercase">Date & Time</label>
+                    <input type="datetime-local" v-model="formData.date" class="w-full mt-1 p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="text-gray-500 text-xs font-bold uppercase">Site Name</label>
+                    <select v-model="formData.site" class="w-full mt-1 p-2 border rounded-lg outline-none text-sm">
+                        <option value="">Select Site</option>
+                        <option>Amba School</option>
+                        <option>Trust Main Building</option>
+                        <option>Hospital Project</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+                <div class="flex justify-between items-center mb-4 border-b pb-2">
+                    <h2 class="font-bold text-blue-900"><i class="fas fa-hard-hat mr-2 text-orange-500"></i>Material Requirement</h2>
+                    <select v-model="formData.category" class="text-xs border p-1 rounded">
+                        <option value="Civil">Civil Work</option>
+                        <option value="Interior">Interior Work</option>
+                    </select>
+                </div>
+
+                <div v-for="(item, index) in formData.items" :key="index" class="bg-gray-50 p-4 rounded-xl mb-3 border-l-4 border-blue-500 relative">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="col-span-2">
+                            <label class="text-[10px] font-bold text-gray-400 uppercase">Item Name</label>
+                            <select v-model="item.name" class="w-full p-2 border rounded-lg text-sm">
+                                <option value="" disabled selected>Select Material</option>
+                                <option v-for="m in materialList[formData.category]" :key="m">{{m}}</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-400 uppercase">Quantity</label>
+                            <input type="text" v-model="item.qty" placeholder="e.g. 100 Bags" class="w-full p-2 border rounded-lg text-sm">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-400 uppercase">Size/Details</label>
+                            <input type="text" v-model="item.size" placeholder="e.g. 10mm" class="w-full p-2 border rounded-lg text-sm">
+                        </div>
+                    </div>
+                    
+                    <p v-if="isDuplicate(item.name, index)" class="text-red-500 text-[10px] mt-2 font-bold italic bg-red-50 p-1 rounded">
+                        ⚠️ Already added in this receipt!
+                    </p>
+
+                    <button @click="removeItem(index)" class="mt-3 w-full bg-red-50 text-red-600 py-1 rounded-lg text-xs font-bold hover:bg-red-100 transition">
+                        <i class="fas fa-trash mr-1"></i> Delete Item
+                    </button>
+                </div>
+
+                <button @click="addItem" class="w-full bg-orange-500 text-white py-3 rounded-xl font-bold shadow-md hover:bg-orange-600 transition uppercase text-sm">
+                    + Add Material Item
+                </button>
+            </div>
+
+            <div class="bg-blue-50 p-4 rounded-2xl border border-blue-100">
+                <p class="text-[10px] text-blue-700 font-bold uppercase mb-2">System Alerts</p>
+                <div class="flex items-center text-xs text-blue-900 mb-1">
+                    <i class="fas fa-check-circle text-green-500 mr-2"></i>
+                    <span>System has checked for duplication across existing orders.</span>
+                </div>
+                <div class="flex items-center text-xs text-blue-900">
+                    <i class="fas fa-bell mr-2"></i>
+                    <span>Admin notified instantly upon generation.</span>
+                </div>
+            </div>
+
+            <button @click="submitRequest" class="w-full bg-blue-900 text-white py-4 rounded-2xl font-bold shadow-xl text-lg mt-4 active:scale-95 transition-transform">
+                GENERATE RECEIPT
+            </button>
+        </div>
+
+        <div v-else class="p-4">
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 mb-4">
+                <h2 class="font-bold text-lg mb-4 text-blue-900">Active Orders Summary</h2>
+                <div v-if="orders.length === 0" class="text-center py-10 text-gray-400 italic bg-gray-50 rounded-lg">No orders generated yet.</div>
+                
+                <div v-for="order in orders" :key="order.id" class="border rounded-lg p-3 mb-3 bg-white hover:border-blue-200 transition">
+                    <div class="flex justify-between items-start border-b pb-2 mb-2">
+                        <div>
+                            <p class="font-bold text-sm text-blue-950">{{order.site}}</p>
+                            <p class="text-[10px] text-gray-500">{{formatDate(order.date)}} | By: {{order.user}}</p>
+                        </div>
+                        <span :class="getStatusClass(order.status)" class="px-2 py-1 rounded text-[10px] font-bold uppercase">
+                            {{order.status}}
+                        </span>
+                    </div>
+                    
+                    <div class="mt-2 space-y-1">
+                        <p class="text-[10px] text-gray-400 font-bold uppercase">Items Ordered:</p>
+                        <div v-for="i in order.items" class="text-xs text-gray-800 bg-gray-50 p-2 rounded flex justify-between">
+                            <span class="font-medium">{{i.name}} ({{i.qty}})</span>
+                            <span class="text-gray-500 italic">{{i.size}}</span>
+                        </div>
+                    </div>
+
+                    <div v-if="userRole === 'Supervisor' && order.status !== 'Received'" class="mt-3 flex gap-2 pt-2 border-t">
+                        <button @click="updateStatus(order.id, 'Received')" class="flex-1 bg-green-600 text-white py-2 rounded-lg text-xs font-bold active:scale-95 transition-transform">
+                            <i class="fas fa-box mr-1"></i> Mark Material Received
+                        </button>
+                        <a href="tel:9999999999" class="bg-gray-100 px-4 py-2 rounded-lg text-xs text-gray-700 active:scale-95 transition-transform">
+                            <i class="fas fa-phone-alt"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        </div> <div class="fixed bottom-0 left-0 right-0 bg-white border-t-2 flex justify-around p-3 text-gray-400 z-50 rounded-t-xl shadow-2xl safe-area-inset">
+            <i class="fas fa-home text-blue-900 text-xl"></i>
+            <i class="fas fa-search text-xl"></i>
+            <i class="fas fa-plus-circle text-orange-500 text-3xl -mt-4 active:scale-95 transition-transform"></i>
+            <i class="fas fa-chart-bar text-xl"></i>
+            <i class="fas fa-user text-xl"></i>
+        </div>
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+        createApp({
+            data() {
+                return {
+                    userRole: 'Engineer',
+                    formData: {
+                        date: new Date().toISOString().slice(0, 16),
+                        site: '',
+                        category: 'Civil',
+                        items: [{ name: '', qty: '', size: '' }]
+                    },
+                    materialList: {
+                        'Civil': ['Steel', 'Cement', '10mm Aggregate', '20mm Aggregate', 'Bricks', 'Sand', 'Tiles', 'Marble'],
+                        'Interior': ['Paint', 'Texture', 'Furniture', 'Electric Items', 'Curtains', 'Lights']
+                    },
+                    orders: [] 
+                }
+            },
+            mounted() {
+                // Load saved orders from local storage when app opens
+                const savedOrders = localStorage.getItem('tpd_purchase_orders');
+                if (savedOrders) {
+                    this.orders = JSON.parse(savedOrders);
+                }
+            },
+            methods: {
+                addItem() {
+                    this.formData.items.push({ name: '', qty: '', size: '' });
+                },
+                removeItem(index) {
+                    this.formData.items.splice(index, 1);
+                },
+                isDuplicate(name, currentIndex) {
+                    if (!name) return false;
+                    return this.formData.items.some((item, idx) => item.name === name && idx !== currentIndex);
+                },
+                saveToStorage() {
+                    // Save orders data to browser storage
+                    localStorage.setItem('tpd_purchase_orders', JSON.stringify(this.orders));
+                },
+                submitRequest() {
+                    if(!this.formData.site) { alert("Please select a site"); return; }
+                    const hasEmptyMaterial = this.formData.items.some(i => !i.name);
+                    if (hasEmptyMaterial) { alert("Please select a material name for all items."); return; }
+
+                    const newOrder = {
+                        id: Date.now(),
+                        site: this.formData.site,
+                        date: this.formData.date,
+                        items: JSON.parse(JSON.stringify(this.formData.items)),
+                        status: 'Pending',
+                        user: 'TPD-Eng-Jigar'
+                    };
+                    this.orders.unshift(newOrder);
+                    this.saveToStorage(); // Save new order
+                    
+                    alert("Receipt Generated & Admin Notified!");
+                    this.formData = { // Reset form
+                        date: new Date().toISOString().slice(0, 16),
+                        site: '',
+                        category: 'Civil',
+                        items: [{ name: '', qty: '', size: '' }]
+                    };
+                    this.userRole = 'Admin'; // Automatic view switch
+                },
+                updateStatus(id, status) {
+                    const order = this.orders.find(o => o.id === id);
+                    if(order) {
+                        order.status = status;
+                        this.saveToStorage(); // Save status change
+                    }
+                },
+                getStatusClass(status) {
+                    return {
+                        'bg-yellow-100 text-yellow-700': status === 'Pending',
+                        'bg-green-100 text-green-700': status === 'Received',
+                        'bg-red-100 text-red-700': status === 'Late'
+                    }
+                },
+                formatDate(dateString) {
+                    return new Date(dateString).toLocaleString('en-IN', { hour12: true });
+                }
+            }
+        }).mount('#app')
+    </script>
+</body>
+</html>
